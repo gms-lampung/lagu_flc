@@ -44,6 +44,13 @@
 
         <div id="toast" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium"></div>
 
+        <div id="pinBox" class="mb-6 hidden">
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row items-center gap-3">
+                <p class="text-xs text-amber-800 font-medium flex-1 text-center sm:text-left">Sesi Admin aktif. Masukkan PIN untuk menyimpan/menghapus.</p>
+                <input id="adminPin" type="password" placeholder="PIN Admin" class="px-3 py-1.5 rounded-lg border border-amber-300 text-sm outline-none focus:ring-2 focus:ring-amber-500/30" onchange="savePin()">
+            </div>
+        </div>
+
         <div class="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
             <div class="flex border-b border-gray-200 bg-gray-50 overflow-x-auto">
                 <button data-tab="cari" class="tab-btn flex-1 whitespace-nowrap px-2 sm:px-4 py-3 text-xs sm:text-sm font-semibold text-gray-600 hover:text-brand-600 border-b-2 border-transparent transition">Cari Lagu</button>
@@ -118,10 +125,36 @@
 
         async function api(path, options = {}) {
             // Path diarahkan ke /.netlify/functions/songs?action=...
+            const pin = localStorage.getItem('flc_pin') || '';
+            options.headers = options.headers || {};
+            if (pin) options.headers['x-admin-pin'] = pin;
+
             const res = await fetch('/api' + (path.startsWith('?') ? path : '/' + path), options);
             const data = await res.json();
-            if (!data.ok) throw new Error(data.error || 'Terjadi kesalahan');
+            if (!data.ok) {
+                if (res.status === 401) {
+                    showPinBox();
+                    throw new Error('PIN Admin diperlukan atau salah');
+                }
+                throw new Error(data.error || 'Terjadi kesalahan');
+            }
             return data;
+        }
+
+        function showPinBox() {
+            document.getElementById('pinBox').classList.remove('hidden');
+        }
+
+        function savePin() {
+            const val = document.getElementById('adminPin').value;
+            localStorage.setItem('flc_pin', val);
+            showToast('PIN disimpan secara lokal');
+        }
+
+        // Init PIN from local
+        const savedPin = localStorage.getItem('flc_pin');
+        if (savedPin) {
+            document.getElementById('adminPin').value = savedPin;
         }
 
         document.querySelectorAll('.tab-btn').forEach(btn => {

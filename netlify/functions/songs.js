@@ -22,6 +22,13 @@ function upstash() {
     });
 }
 
+function checkAuth(event) {
+    const pin = process.env.ADMIN_PIN;
+    if (!pin) return true; // ponytail: No PIN set, skip auth. Add ADMIN_PIN to Netlify.
+    const provided = event.headers['x-admin-pin'] || event.queryStringParameters?.pin;
+    return provided === pin;
+}
+
 async function redisGet(key) {
     const res = await upstash().get(`/get/${encodeURIComponent(key)}`);
     const val = res.data?.result;
@@ -78,6 +85,7 @@ exports.handler = async (event) => {
         }
 
         if (action === 'add') {
+            if (!checkAuth(event)) return json({ ok: false, error: 'PIN Admin salah' }, 401);
             const body = JSON.parse(event.body || '{}');
             const v = cleanSong(body);
             if (v.error) return json({ ok: false, error: v.error }, 400);
@@ -90,6 +98,7 @@ exports.handler = async (event) => {
         }
 
         if (action === 'update') {
+            if (!checkAuth(event)) return json({ ok: false, error: 'PIN Admin salah' }, 401);
             const body = JSON.parse(event.body || '{}');
             const id = event.queryStringParameters?.id || body.id;
             if (!id) return json({ ok: false, error: 'Missing ID' }, 400);
@@ -107,6 +116,7 @@ exports.handler = async (event) => {
         }
 
         if (action === 'delete') {
+            if (!checkAuth(event)) return json({ ok: false, error: 'PIN Admin salah' }, 401);
             const id = event.queryStringParameters?.id;
             if (!id) return json({ ok: false, error: 'Missing ID' }, 400);
             const index = await getOrSeedIndex();
